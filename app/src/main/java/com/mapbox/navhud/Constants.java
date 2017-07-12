@@ -1,4 +1,4 @@
-package com.nesfeder.navhud;
+package com.mapbox.navhud;
 
 public class Constants {
 

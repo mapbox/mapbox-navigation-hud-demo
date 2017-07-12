@@ -1,4 +1,4 @@
-package com.nesfeder.navhud.location;
+package com.mapbox.navhud.location;
 
 import android.content.Context;
 import android.location.Location;

@@ -1,9 +1,16 @@
-
-package com.nesfeder.navhud;
+package com.mapbox.navhud;
 
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_LEFT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_RIGHT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SHARP_LEFT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SHARP_RIGHT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_LEFT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_RIGHT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_STRAIGHT;
+import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_UTURN;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ARRIVE;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_CONTINUE;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_DEPART;
@@ -18,14 +25,6 @@ import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROTARY;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROUNDABOUT;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROUNDABOUT_TURN;
 import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_TURN;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_LEFT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_RIGHT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_SHARP_LEFT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_SHARP_RIGHT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_LEFT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_RIGHT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_STRAIGHT;
-import static com.nesfeder.navhud.Constants.STEP_MANEUVER_MODIFIER_UTURN;
 
 public class ManeuverMap {
 
