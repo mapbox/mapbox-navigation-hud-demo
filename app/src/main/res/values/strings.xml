@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">navhud</string>
+    <string name="action_settings">Settings</string>
+    <string name="arrival">Arrival:</string>
+    <string name="distance">Distance:</string>
+    <string name="time">Time:</string>
+</resources>
