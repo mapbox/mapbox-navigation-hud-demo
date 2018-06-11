@@ -6,7 +6,9 @@ import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.text.SpannableString;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
 import android.view.animation.LinearInterpolator;
@@ -15,28 +17,29 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.mapbox.navhud.Constants;
+import com.mapbox.android.core.location.LocationEngine;
+import com.mapbox.android.core.location.LocationEngineListener;
+import com.mapbox.android.core.location.LocationEngineProvider;
+import com.mapbox.api.directions.v5.DirectionsCriteria;
+import com.mapbox.api.directions.v5.models.DirectionsResponse;
+import com.mapbox.api.directions.v5.models.DirectionsRoute;
+import com.mapbox.api.directions.v5.models.LegStep;
+import com.mapbox.api.directions.v5.models.StepManeuver;
+import com.mapbox.geojson.Point;
 import com.mapbox.navhud.ManeuverMap;
 import com.mapbox.navhud.R;
-import com.mapbox.navhud.location.GoogleLocationEngine;
-import com.mapbox.services.android.navigation.v5.MapboxNavigation;
+import com.mapbox.services.android.navigation.v5.milestone.Milestone;
 import com.mapbox.services.android.navigation.v5.milestone.MilestoneEventListener;
+import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationRoute;
+import com.mapbox.services.android.navigation.v5.navigation.NavigationTimeFormat;
 import com.mapbox.services.android.navigation.v5.routeprogress.ProgressChangeListener;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteProgress;
-import com.mapbox.services.android.telemetry.location.LocationEngine;
-import com.mapbox.services.android.telemetry.location.LocationEngineListener;
-import com.mapbox.services.api.directions.v5.models.DirectionsResponse;
-import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
-import com.mapbox.services.api.directions.v5.models.LegStep;
-import com.mapbox.services.api.directions.v5.models.StepManeuver;
-import com.mapbox.services.api.utils.turf.TurfConstants;
-import com.mapbox.services.api.utils.turf.TurfHelpers;
-import com.mapbox.services.commons.models.Position;
+import com.mapbox.services.android.navigation.v5.utils.DistanceUtils;
+import com.mapbox.services.android.navigation.v5.utils.time.TimeUtils;
 
-import java.text.DecimalFormat;
 import java.util.Calendar;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -45,19 +48,16 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
+import static com.mapbox.android.core.location.LocationEnginePriority.HIGH_ACCURACY;
 import static com.mapbox.navhud.Constants.MAPBOX_ACCESS_TOKEN;
 import static com.mapbox.navhud.Constants.MPH_DOUBLE;
 import static com.mapbox.navhud.Constants.PLACE_LOCATION_EXTRA;
-import static com.mapbox.services.android.telemetry.location.LocationEnginePriority.HIGH_ACCURACY;
+import static com.mapbox.services.android.navigation.v5.utils.time.TimeUtils.formatTimeRemaining;
 
 public class DisplayActivity extends AppCompatActivity implements LocationEngineListener,
   ProgressChangeListener, MilestoneEventListener, Callback<DirectionsResponse>, TextToSpeech.OnInitListener {
 
   private static final String TAG = DisplayActivity.class.getSimpleName();
-  private static final String ARRIVAL_STRING_FORMAT = "%tl:%tM %tp%n";
-  private static final String DECIMAL_FORMAT = "###.#";
-  private static final String MILES_STRING_FORMAT = "%s miles";
-  private static final String FEET_STRING_FORMAT = "%s feet";
 
   @BindView(R.id.stepText)
   TextView stepText;
@@ -76,11 +76,12 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
   @BindView(R.id.stepProgressBar)
   ProgressBar stepProgressBar;
 
-  private Position currentUserPosition;
+  private Point currentUserPoint;
   private MapboxNavigation navigation;
   private LocationEngine locationEngine;
   private boolean mirroring;
   private TextToSpeech tts;
+  private DistanceUtils distanceUtils;
 
   @Override
   protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -93,12 +94,7 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
 
     activateLocationEngine();
     initMapboxNavigation();
-  }
-
-  @Override
-  protected void onStop() {
-    super.onStop();
-    navigation.onStop();
+    initDistanceUtils();
   }
 
   @Override
@@ -121,21 +117,21 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
     hideNavigationFullscreen();
   }
 
-  @SuppressWarnings({"MissingPermission"})
+  @SuppressWarnings( {"MissingPermission"})
   @Override
   public void onConnected() {
     locationEngine.requestLocationUpdates();
 
     if (locationEngine.getLastLocation() != null) {
       Location lastLocation = locationEngine.getLastLocation();
-      currentUserPosition = Position.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude());
+      currentUserPoint = Point.fromLngLat(lastLocation.getLongitude(), lastLocation.getLatitude());
       checkIntentExtras();
     }
   }
 
   @Override
   public void onLocationChanged(Location location) {
-    currentUserPosition = Position.fromLngLat(location.getLongitude(), location.getLatitude());
+    currentUserPoint = Point.fromLngLat(location.getLongitude(), location.getLatitude());
     calculateMph(location);
   }
 
@@ -146,16 +142,14 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
   }
 
   @Override
-  public void onMilestoneEvent(RouteProgress routeProgress, String instruction, int identifier) {
+  public void onMilestoneEvent(RouteProgress routeProgress, String instruction, Milestone milestone) {
     tts.speak(instruction, TextToSpeech.QUEUE_FLUSH, null, null);
   }
 
   @Override
   public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
-    if (response.body() != null &&
-      response.body().getRoutes() != null &&
-      response.body().getRoutes().size() > 0) {
-      DirectionsRoute currentRoute = response.body().getRoutes().get(0);
+    if (response.body() != null && response.body().routes().size() > 0) {
+      DirectionsRoute currentRoute = response.body().routes().get(0);
       navigation.setLocationEngine(locationEngine);
       navigation.startNavigation(currentRoute);
     }
@@ -177,7 +171,8 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
   }
 
   private void activateLocationEngine() {
-    locationEngine = GoogleLocationEngine.getLocationEngine(this);
+    LocationEngineProvider locationEngineProvider = new LocationEngineProvider(this);
+    locationEngine = locationEngineProvider.obtainBestLocationEngineAvailable();
     locationEngine.setPriority(HIGH_ACCURACY);
     locationEngine.setInterval(0);
     locationEngine.setFastestInterval(1000);
@@ -197,13 +192,22 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
     navigation.addMilestoneEventListener(this);
   }
 
+  private void initDistanceUtils() {
+    String language = getResources().getConfiguration().locale.getLanguage();
+    distanceUtils = new DistanceUtils(this, language, DirectionsCriteria.IMPERIAL);
+  }
+
   private void checkIntentExtras() {
     if (getIntent().hasExtra(PLACE_LOCATION_EXTRA)) {
       Location placeLocation = getIntent().getParcelableExtra(PLACE_LOCATION_EXTRA);
-      Position destination = Position.fromLngLat(placeLocation.getLongitude(), placeLocation.getLatitude());
+      Point destination = Point.fromLngLat(placeLocation.getLongitude(), placeLocation.getLatitude());
 
-      if (currentUserPosition != null) {
-        navigation.getRoute(currentUserPosition, destination, this);
+      if (currentUserPoint != null) {
+        NavigationRoute.builder(this)
+          .accessToken(MAPBOX_ACCESS_TOKEN)
+          .origin(currentUserPoint)
+          .destination(destination)
+          .build().getRoute(this);
       } else {
         Toast.makeText(this, "Current Location is null", Toast.LENGTH_LONG).show();
       }
@@ -221,110 +225,52 @@ public class DisplayActivity extends AppCompatActivity implements LocationEngine
 
   private void updateUi(RouteProgress progress) {
     extractLegStep(progress);
-    stepDistanceText.setText(formatStepDistanceRemaining(progress.getCurrentLegProgress()
-      .getCurrentStepProgress().getDistanceRemaining()));
-    routeDistanceText.setText(formatRouteDistanceRemaining(progress.getDistanceRemaining()));
-    timeRemainingText.setText(formatTimeRemaining(progress.getDurationRemaining()));
-    arrivalText.setText(formatArrivalTime(progress.getDurationRemaining()));
-    setStepProgressBar(progress.getCurrentLegProgress().getCurrentStepProgress().getFractionTraveled());
+    stepDistanceText.setText(formatStepDistanceRemaining(progress.currentLegProgress()
+      .currentStepProgress().distanceRemaining()));
+    routeDistanceText.setText(formatRouteDistanceRemaining(progress.distanceRemaining()));
+    timeRemainingText.setText(formatTimeRemaining(progress.durationRemaining()));
+    arrivalText.setText(formatArrivalTime(progress.durationRemaining()));
+    setStepProgressBar(progress.currentLegProgress().currentStepProgress().fractionTraveled());
   }
 
   private void extractLegStep(RouteProgress progress) {
-    LegStep upComingStep = progress.getCurrentLegProgress().getUpComingStep();
+    LegStep upComingStep = progress.currentLegProgress().upComingStep();
     if (upComingStep != null) {
       maneuverImage.setImageResource(obtainManeuverResource(upComingStep));
-      if (upComingStep.getManeuver() != null) {
-        if (!TextUtils.isEmpty(upComingStep.getName())) {
-          stepText.setText(upComingStep.getName());
-        } else if (!TextUtils.isEmpty(upComingStep.getManeuver().getInstruction())) {
-          stepText.setText(upComingStep.getManeuver().getInstruction());
-        }
+      if (!TextUtils.isEmpty(upComingStep.name())) {
+        stepText.setText(upComingStep.name());
+      } else if (!TextUtils.isEmpty(upComingStep.maneuver().instruction())) {
+        stepText.setText(upComingStep.maneuver().instruction());
       }
     }
   }
 
   private static int obtainManeuverResource(LegStep step) {
     ManeuverMap maneuverMap = new ManeuverMap();
-    if (step != null && step.getManeuver() != null) {
-      StepManeuver maneuver = step.getManeuver();
-      if (!TextUtils.isEmpty(maneuver.getModifier())) {
-        return maneuverMap.getManeuverResource(maneuver.getType() + maneuver.getModifier());
+    if (step != null) {
+      StepManeuver maneuver = step.maneuver();
+      if (!TextUtils.isEmpty(maneuver.modifier())) {
+        return maneuverMap.getManeuverResource(maneuver.type() + maneuver.modifier());
       } else {
-        return maneuverMap.getManeuverResource(maneuver.getType());
+        return maneuverMap.getManeuverResource(maneuver.type());
       }
     }
     return R.drawable.maneuver_starting;
   }
 
-  private static String formatTimeRemaining(double routeDurationRemaining) {
-    long seconds = (long) routeDurationRemaining;
-
-    if (seconds < 0) {
-      throw new IllegalArgumentException(Constants.DURATION_ILLEGAL_ARGUMENT);
-    }
-
-    long days = TimeUnit.SECONDS.toDays(seconds);
-    seconds -= TimeUnit.DAYS.toSeconds(days);
-    long hours = TimeUnit.SECONDS.toHours(seconds);
-    seconds -= TimeUnit.HOURS.toSeconds(hours);
-    long minutes = TimeUnit.SECONDS.toMinutes(seconds);
-    seconds -= TimeUnit.MINUTES.toSeconds(minutes);
-    long sec = TimeUnit.SECONDS.toSeconds(seconds);
-
-    if (seconds >= 30) {
-      minutes = minutes + 1;
-    }
-
-    StringBuilder sb = new StringBuilder(Constants.STRING_BUILDER_CAPACITY);
-    if (days != 0) {
-      sb.append(days);
-      sb.append(Constants.DAYS);
-    }
-    if (hours != 0) {
-      sb.append(hours);
-      sb.append(Constants.HOUR);
-    }
-    if (minutes != 0) {
-      sb.append(minutes);
-      sb.append(Constants.MINUTE);
-    }
-    if (days == 0 && hours == 0 && minutes == 0) {
-      sb.append(sec);
-      sb.append(Constants.SECONDS);
-    }
-
-    return ("Time: " + sb.toString());
-  }
-
-  public static String formatArrivalTime(double routeDurationRemaining) {
+  public String formatArrivalTime(double routeDurationRemaining) {
     Calendar calendar = Calendar.getInstance();
-    calendar.add(Calendar.SECOND, (int) routeDurationRemaining);
-
-    return "Arrival: " + String.format(Locale.US, ARRIVAL_STRING_FORMAT,
-      calendar, calendar, calendar);
+    boolean isTwentyFourHourFormat = DateFormat.is24HourFormat(this);
+    return TimeUtils.formatTime(calendar, routeDurationRemaining,
+      NavigationTimeFormat.TWELVE_HOURS, isTwentyFourHourFormat);
   }
 
-  private static String formatRouteDistanceRemaining(double routeDistanceRemaining) {
-    double miles = routeDistanceRemaining * Constants.METER_MULTIPLIER;
-    DecimalFormat df = new DecimalFormat(DECIMAL_FORMAT);
-    miles = Double.valueOf(df.format(miles));
-
-    return ("Distance: " + miles + Constants.MILES);
+  private SpannableString formatRouteDistanceRemaining(double routeDistanceRemaining) {
+    return distanceUtils.formatDistance(routeDistanceRemaining);
   }
 
-  private static String formatStepDistanceRemaining(double distance) {
-    String formattedString;
-    if (TurfHelpers.convertDistance(distance, TurfConstants.UNIT_METERS, TurfConstants.UNIT_FEET) > 1099) {
-      distance = TurfHelpers.convertDistance(distance, TurfConstants.UNIT_METERS, TurfConstants.UNIT_MILES);
-      DecimalFormat df = new DecimalFormat(DECIMAL_FORMAT);
-      double roundedNumber = (distance / 100 * 100);
-      formattedString = String.format(Locale.US, MILES_STRING_FORMAT, df.format(roundedNumber));
-    } else {
-      distance = TurfHelpers.convertDistance(distance, TurfConstants.UNIT_METERS, TurfConstants.UNIT_FEET);
-      int roundedNumber = ((int) Math.round(distance)) / 100 * 100;
-      formattedString = String.format(Locale.US, FEET_STRING_FORMAT, roundedNumber);
-    }
-    return "In " + formattedString;
+  private SpannableString formatStepDistanceRemaining(double distance) {
+    return distanceUtils.formatDistance(distance);
   }
 
   private void setStepProgressBar(float fractionRemaining) {

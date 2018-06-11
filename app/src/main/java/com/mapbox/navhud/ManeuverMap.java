@@ -11,20 +11,20 @@ import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_LEFT;
 import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_SLIGHT_RIGHT;
 import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_STRAIGHT;
 import static com.mapbox.navhud.Constants.STEP_MANEUVER_MODIFIER_UTURN;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ARRIVE;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_CONTINUE;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_DEPART;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_END_OF_ROAD;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_FORK;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_MERGE;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_NEW_NAME;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_NOTIFICATION;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_OFF_RAMP;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ON_RAMP;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROTARY;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROUNDABOUT;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_ROUNDABOUT_TURN;
-import static com.mapbox.services.android.Constants.STEP_MANEUVER_TYPE_TURN;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_ARRIVE;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_CONTINUE;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_DEPART;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_END_OF_ROAD;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_FORK;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_MERGE;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_NEW_NAME;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_NOTIFICATION;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_OFF_RAMP;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_ON_RAMP;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_ROTARY;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_ROUNDABOUT;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_ROUNDABOUT_TURN;
+import static com.mapbox.services.android.navigation.v5.navigation.NavigationConstants.STEP_MANEUVER_TYPE_TURN;
 
 public class ManeuverMap {
 
