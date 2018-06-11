@@ -15,13 +15,4 @@ public class Constants {
   static final String STEP_MANEUVER_MODIFIER_SLIGHT_LEFT = "slight left";
   static final String STEP_MANEUVER_MODIFIER_LEFT = "left";
   static final String STEP_MANEUVER_MODIFIER_SHARP_LEFT = "sharp left";
-
-  public static final String DAYS = " days ";
-  public static final String HOUR = " hr ";
-  public static final String MINUTE = " min ";
-  public static final String SECONDS = " seconds";
-  public static final String MILES = " mi";
-  public static final double METER_MULTIPLIER = .00062137;
-  public static final String DURATION_ILLEGAL_ARGUMENT = "Duration must be greater than zero.";
-  public static final int STRING_BUILDER_CAPACITY = 64;
 }
